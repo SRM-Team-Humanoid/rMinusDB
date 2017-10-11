@@ -6,6 +6,8 @@ import sqlite3
 db_name = None
 flow_name = ""
 page_ID = ""
+page_name = ""
+frame_ID = ""
 
 class dbpageform(npyscreen.Form):
     def afterEditing(self):
@@ -31,6 +33,10 @@ class dbpage2form(npyscreen.Form):
             self.parentApp.setNextForm('flowform')
         elif self.options.value[0]==0 and self.parentApp.mode==2:
             self.parentApp.setNextForm('flowform')
+        elif self.options.value[0]==1 and self.parentApp.mode==1:
+            self.parentApp.setNextForm('pageform')
+        elif self.options.value[0]==1 and self.parentApp.mode==2:
+            self.parentApp.setNextForm('pageform')
         else:
             self.parentApp.setNextForm(None)
 
@@ -165,6 +171,87 @@ class flowadder(npyscreen.Form):
 
 
 
+class pageform(npyscreen.Form):
+    def afterEditing(self):
+        global page_name
+        self.parentApp.setNextForm('pageframeid')
+        page_name = str(self.lista[self.grid.edit_cell[0]])
+
+    def getRows(self):
+        con = sqlite3.connect("test.db")
+        cur = con.cursor()
+        cur.execute("SELECT DISTINCT Page from pagedata")
+        rows = cur.fetchall()
+        self.lista =[]
+        for r in range(len(rows)):
+            self.lista.append(rows[r][0])
+
+    def beforeEditing(self):
+        if flow_name!="":
+            self.getRows()
+            self.grid.set_grid_values_from_flat_list(self.lista, max_cols=1, reset_cursor=False)
+        self.display()
+
+
+    def create(self):
+        self.getRows()
+        # with open('k.txt','w') as f:
+        #     f.write(rows[0][0])
+
+        self.grid = self.add(npyscreen.SimpleGrid)
+        self.grid.set_grid_values_from_flat_list(self.lista, max_cols=1, reset_cursor=False)
+        self.grid.add_handlers({curses.ascii.NL:self.h_exit_down})
+
+    def _test_safe_to_exit(self):
+        self.parentApp.switchForm('pageframid')
+        #self.parentApp.search = ""
+
+
+
+class pageframeid(npyscreen.Form):
+    def afterEditing(self):
+        global frame_ID
+        self.parentApp.setNextForm('db')
+        frame_ID = str(self.lista[self.grid.edit_cell[0]])
+
+    def getRows(self):
+        con = sqlite3.connect("test.db")
+        cur = con.cursor()
+        cur.execute("SELECT Frame from pagedata where Page = \'"+page_name+"\'")
+        rows = cur.fetchall()
+        self.lista =[]
+        for r in range(len(rows)):
+            self.lista.append(rows[r][0])
+
+    def beforeEditing(self):
+        if page_name!="":
+            self.getRows()
+            self.grid.set_grid_values_from_flat_list(self.lista, max_cols=1, reset_cursor=False)
+        self.display()
+
+    def create(self):
+
+        # with open('k.txt','w') as f:
+        #     f.write(rows[0][0])
+
+        self.grid = self.add(npyscreen.SimpleGrid)
+        self.grid.add_handlers({curses.ascii.NL:self.h_exit_down})
+
+    def _test_safe_to_exit(self):
+        self.parentApp.switchForm('db')
+        #self.parentApp.search = ""
+
+
+
+
+
+
+
+
+
+
+
+
 
 class loadpageform(npyscreen.Form):
     def afterEditing(self):
@@ -186,6 +273,9 @@ class MyApplication(npyscreen.NPSAppManaged):
        self.addForm('flowpageid',flowpageid,name='Page Selector')
        self.addForm('floweditor',floweditor,name='Flow Editor')
        self.addForm('flowadder',flowadder,name='Flow Adder')
+
+       self.addForm('pageform',pageform,name='Page Selector')
+       self.addForm('pageframeid',pageframeid,name='Frame Selector')
 
 
        # A real application might define more forms here.......
