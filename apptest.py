@@ -4,7 +4,8 @@ import sqlite3
 
 
 db_name = None
-
+flow_name = ""
+page_ID = ""
 
 class dbpageform(npyscreen.Form):
     def afterEditing(self):
@@ -34,24 +35,95 @@ class dbpage2form(npyscreen.Form):
 
 class flowform(npyscreen.Form):
     def afterEditing(self):
-        self.parentApp.setNextForm('db')
-        with open('k.txt','w') as f:
-             #f.write(" ".join(str(x) for x in self.grid.edit_cell))
-             f.write(self.grid.cell_display_value)
+        global flow_name
+        self.parentApp.setNextForm('flowpageid')
+        flow_name = str(self.lista[self.grid.edit_cell[0]])
 
-    def create(self):
+    def getRows(self):
         con = sqlite3.connect("test.db")
         cur = con.cursor()
         cur.execute("SELECT DISTINCT FLOW from flowdata")
         rows = cur.fetchall()
-        lista =[]
+        self.lista =[]
         for r in range(len(rows)):
-            lista.append(rows[r][0])
+            self.lista.append(rows[r][0])
+
+    def while_waiting(self):
+        npyscreen.notify_wait("Update")
+        if flow_name!="":
+            getRows()
+            self.grid.set_grid_values_from_flat_list(self.lista, max_cols=1, reset_cursor=False)
+        self.display()
+
+    def create(self):
+        self.getRows()
         # with open('k.txt','w') as f:
         #     f.write(rows[0][0])
 
         self.grid = self.add(npyscreen.SimpleGrid)
-        self.grid.set_grid_values_from_flat_list(lista, max_cols=1, reset_cursor=False)
+        self.grid.set_grid_values_from_flat_list(self.lista, max_cols=1, reset_cursor=False)
+        self.grid.add_handlers({curses.ascii.NL:self.h_exit_down})
+
+    def _test_safe_to_exit(self):
+        self.parentApp.switchForm('flowpageid')
+        #self.parentApp.search = ""
+
+class flowpageid(npyscreen.Form):
+    def afterEditing(self):
+        global page_ID
+        self.parentApp.setNextForm('floweditor')
+        page_ID = str(self.lista[self.grid.edit_cell[0]])
+
+    def getRows(self):
+        con = sqlite3.connect("test.db")
+        cur = con.cursor()
+        cur.execute("SELECT PageID from flowdata where Flow = \'"+flow_name+"\'")
+        rows = cur.fetchall()
+        self.lista =[]
+        for r in range(len(rows)):
+            self.lista.append(rows[r][0])
+
+    def beforeEditing(self):
+        if flow_name!="":
+            self.getRows()
+            self.grid.set_grid_values_from_flat_list(self.lista, max_cols=1, reset_cursor=False)
+        self.display()
+
+    def create(self):
+
+        # with open('k.txt','w') as f:
+        #     f.write(rows[0][0])
+
+        self.grid = self.add(npyscreen.SimpleGrid)
+        self.grid.add_handlers({curses.ascii.NL:self.h_exit_down})
+
+    def _test_safe_to_exit(self):
+        self.parentApp.switchForm('db')
+        #self.parentApp.search = ""
+
+
+class floweditor(npyscreen.Form):
+    def afterEditing(self):
+        self.parentApp.setNextForm('db')
+
+    def getRows(self):
+        con = sqlite3.connect("test.db")
+        cur = con.cursor()
+        cur.execute("SELECT * from flowdata where Flow = \'"+flow_name+"\' and PageID = \'"+page_ID+"\'")
+        rows = cur.fetchall()
+        self.lista =[]
+
+    def beforeEditing(self):
+        if page_ID!="":
+            self.getRows()
+        self.display()
+
+    def create(self):
+
+        # with open('k.txt','w') as f:
+        #     f.write(rows[0][0])
+
+        self.grid = self.add(npyscreen.SimpleGrid)
         self.grid.add_handlers({curses.ascii.NL:self.h_exit_down})
 
     def _test_safe_to_exit(self):
@@ -80,6 +152,9 @@ class MyApplication(npyscreen.NPSAppManaged):
        self.addForm('db',dbpageform,name='Database')
        self.addForm('db2',dbpage2form,name='Page/Flow')
        self.addForm('flowform',flowform,name='Flow Selector')
+       self.addForm('flowpageid',flowpageid,name='Page Selector')
+       self.addForm('floweditor',floweditor,name='Flow Editor')
+
 
        # A real application might define more forms here.......
 
