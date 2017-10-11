@@ -13,17 +13,23 @@ class dbpageform(npyscreen.Form):
         #     f.write(" ".join(str(x) for x in self.options.value))
         self.parentApp.setNextForm('db2')
         self.parentApp.mode = self.options.value[0]
+        if self.options.value[0]==4:
+            exit()
 
 
     def create(self):
-       self.options = self.add(npyscreen.TitleSelectOne, scroll_exit=True, max_height=4, name='Select Action', values = ['Add', 'Edit', 'Delete','Execute'])
+       self.options = self.add(npyscreen.TitleSelectOne, scroll_exit=True, max_height=5, name='Select Action', values = ['Add', 'Edit', 'Delete','Execute','Exit'])
 
 
 class dbpage2form(npyscreen.Form):
     def afterEditing(self):
         # with open('k.txt','w') as f:
         #     f.write(" ".join(str(x) for x in self.options.value))
-        if self.options.value[0]==0:
+        if self.options.value[0]==0 and self.parentApp.mode==0:
+            self.parentApp.setNextForm('flowadder')
+        elif self.options.value[0]==0 and self.parentApp.mode==1:
+            self.parentApp.setNextForm('flowform')
+        elif self.options.value[0]==0 and self.parentApp.mode==2:
             self.parentApp.setNextForm('flowform')
         else:
             self.parentApp.setNextForm(None)
@@ -48,12 +54,12 @@ class flowform(npyscreen.Form):
         for r in range(len(rows)):
             self.lista.append(rows[r][0])
 
-    def while_waiting(self):
-        npyscreen.notify_wait("Update")
+    def beforeEditing(self):
         if flow_name!="":
-            getRows()
+            self.getRows()
             self.grid.set_grid_values_from_flat_list(self.lista, max_cols=1, reset_cursor=False)
         self.display()
+
 
     def create(self):
         self.getRows()
@@ -109,13 +115,17 @@ class floweditor(npyscreen.Form):
     def getRows(self):
         con = sqlite3.connect("test.db")
         cur = con.cursor()
-        cur.execute("SELECT * from flowdata where Flow = \'"+flow_name+"\' and PageID = \'"+page_ID+"\'")
+        cur.execute("SELECT PageName,Speed from flowdata where Flow = \'"+flow_name+"\' and PageID = \'"+page_ID+"\'")
         rows = cur.fetchall()
-        self.lista =[]
+        self.lista = [str(rows[0][0]),str(rows[0][1])]
+        # with open('k.txt','w') as f:
+        #      f.write(str(len(rows[0])))
 
     def beforeEditing(self):
         if page_ID!="":
             self.getRows()
+            self.pagename.value = self.lista[0]
+            self.speed.value = self.lista[1]
         self.display()
 
     def create(self):
@@ -123,12 +133,33 @@ class floweditor(npyscreen.Form):
         # with open('k.txt','w') as f:
         #     f.write(rows[0][0])
 
-        self.grid = self.add(npyscreen.SimpleGrid)
-        self.grid.add_handlers({curses.ascii.NL:self.h_exit_down})
+        self.pagename = self.add(npyscreen.TitleText, name = "PageName:",)
+        self.speed = self.add(npyscreen.TitleText, name = "Speed:",)
 
-    def _test_safe_to_exit(self):
-        self.parentApp.switchForm('db')
-        #self.parentApp.search = ""
+
+
+
+class flowadder(npyscreen.Form):
+    def afterEditing(self):
+        self.parentApp.setNextForm('db')
+
+    def beforeEditing(self):
+        if page_ID!="":
+            self.flow.value = ""
+            self.pageid.value = ""
+            self.pagename.value = ""
+            self.speed.value = ""
+        self.display()
+
+    def create(self):
+
+        # with open('k.txt','w') as f:
+        #     f.write(rows[0][0])
+        self.flow = self.add(npyscreen.TitleText, name = "Flow Name:",)
+        self.pageid = self.add(npyscreen.TitleText, name = "Page Id:",)
+        self.pagename = self.add(npyscreen.TitleText, name = "PageName:",)
+        self.speed = self.add(npyscreen.TitleText, name = "Speed:",)
+
 
 
 
@@ -154,6 +185,7 @@ class MyApplication(npyscreen.NPSAppManaged):
        self.addForm('flowform',flowform,name='Flow Selector')
        self.addForm('flowpageid',flowpageid,name='Page Selector')
        self.addForm('floweditor',floweditor,name='Flow Editor')
+       self.addForm('flowadder',flowadder,name='Flow Adder')
 
 
        # A real application might define more forms here.......
